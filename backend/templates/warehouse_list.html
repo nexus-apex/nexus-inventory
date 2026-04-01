@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Warehouses | NexusInventory{% endblock %}
+{% block page_title %}Warehouses{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
+  <form class="search-bar" method="get" style="flex:1;margin-bottom:0">
+    <input type="text" name="search" value="{{ search }}" placeholder="Search warehouses...">
+    <select name="status" onchange="this.form.submit()">
+      <option value="">All Status</option>
+      <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+      <option value="maintenance" {% if status_filter == 'maintenance' %}selected{% endif %}>Maintenance</option>
+      <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>Closed</option>
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+  </form>
+  <a href="/warehouses/create/" class="btn btn-primary">+ New Warehouse</a>
+</div>
+
+<div class="card">
+  {% if records %}
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Location</th><th>Capacity</th><th>Utilization</th><th>Manager</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for r in records %}
+      <tr>
+        <td><a href="/warehouses/{{ r.pk }}/edit/"><strong>{{ r.name }}</strong></a></td>
+        <td>{{ r.location|default:"-" }}</td>
+        <td>{{ r.capacity|default:"-" }}</td>
+        <td>{{ r.utilization|floatformat:2 }}</td>
+        <td>{{ r.manager|default:"-" }}</td>
+        <td class="actions">
+          <a href="/warehouses/{{ r.pk }}/edit/" class="btn btn-primary btn-sm">Edit</a>
+          <form method="post" action="/warehouses/{{ r.pk }}/delete/" style="display:inline" onsubmit="return confirm('Delete?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm">Del</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    <p>No warehouses found.</p>
+    <a href="/warehouses/create/" class="btn btn-primary" style="margin-top:1rem">Create Warehouse</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
