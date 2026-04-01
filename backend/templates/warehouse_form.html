@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}{% if editing %}Edit{% else %}New{% endif %} Warehouse | NexusInventory{% endblock %}
+{% block page_title %}{% if editing %}Edit Warehouse{% else %}New Warehouse{% endif %}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:750px">
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-row">
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" name="name" value="{{ record.name|default:'' }}">
+      </div>
+      <div class="form-group">
+        <label>Location</label>
+        <input type="text" name="location" value="{{ record.location|default:'' }}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Capacity</label>
+        <input type="number" name="capacity" value="{{ record.capacity|default:'0' }}">
+      </div>
+      <div class="form-group">
+        <label>Utilization</label>
+        <input type="number" step="0.01" name="utilization" value="{{ record.utilization|default:'0' }}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Manager</label>
+        <input type="text" name="manager" value="{{ record.manager|default:'' }}">
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select name="status">
+          <option value="active" {% if record.status == 'active' %}selected{% endif %}>Active</option>
+          <option value="maintenance" {% if record.status == 'maintenance' %}selected{% endif %}>Maintenance</option>
+          <option value="closed" {% if record.status == 'closed' %}selected{% endif %}>Closed</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Contact</label>
+        <input type="text" name="contact" value="{{ record.contact|default:'' }}">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:0.75rem;margin-top:1rem">
+      <button type="submit" class="btn btn-primary">{% if editing %}Update{% else %}Create{% endif %} Warehouse</button>
+      <a href="/warehouses/" class="btn" style="background:var(--border);color:var(--text)">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
