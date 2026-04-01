@@ -3,9 +3,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
-from django.conf import settings
-from .models import Record
+from django.db.models import Sum, Count
+from .models import Product, Warehouse, StockMovement
 
 
 def login_view(request):
@@ -30,67 +29,181 @@ def logout_view(request):
 
 @login_required
 def dashboard_view(request):
-    total = Record.objects.count()
-    active = Record.objects.filter(status='active').count()
-    pending = Record.objects.filter(status='pending').count()
-    inactive = Record.objects.filter(status='inactive').count()
-    recent = Record.objects.all()[:10]
-    return render(request, 'dashboard.html', {
-        'total': total, 'active': active, 'pending': pending,
-        'inactive': inactive, 'recent': recent,
-    })
+    ctx = {}
+    ctx['product_count'] = Product.objects.count()
+    ctx['product_in_stock'] = Product.objects.filter(status='in_stock').count()
+    ctx['product_low_stock'] = Product.objects.filter(status='low_stock').count()
+    ctx['product_out_of_stock'] = Product.objects.filter(status='out_of_stock').count()
+    ctx['product_total_unit_price'] = Product.objects.aggregate(t=Sum('unit_price'))['t'] or 0
+    ctx['warehouse_count'] = Warehouse.objects.count()
+    ctx['warehouse_active'] = Warehouse.objects.filter(status='active').count()
+    ctx['warehouse_maintenance'] = Warehouse.objects.filter(status='maintenance').count()
+    ctx['warehouse_closed'] = Warehouse.objects.filter(status='closed').count()
+    ctx['warehouse_total_utilization'] = Warehouse.objects.aggregate(t=Sum('utilization'))['t'] or 0
+    ctx['stockmovement_count'] = StockMovement.objects.count()
+    ctx['stockmovement_in'] = StockMovement.objects.filter(movement_type='in').count()
+    ctx['stockmovement_out'] = StockMovement.objects.filter(movement_type='out').count()
+    ctx['stockmovement_transfer'] = StockMovement.objects.filter(movement_type='transfer').count()
+    ctx['recent'] = Product.objects.all()[:10]
+    return render(request, 'dashboard.html', ctx)
 
 
 @login_required
-def records_view(request):
-    records = Record.objects.all()
-    status_filter = request.GET.get('status', '')
+def product_list(request):
+    qs = Product.objects.all()
     search = request.GET.get('search', '')
-    if status_filter:
-        records = records.filter(status=status_filter)
     if search:
-        records = records.filter(name__icontains=search)
-    return render(request, 'records.html', {'records': records, 'status_filter': status_filter, 'search': search})
+        qs = qs.filter(name__icontains=search)
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+    return render(request, 'product_list.html', {'records': qs, 'search': search, 'status_filter': status_filter})
 
 
 @login_required
-def record_create(request):
+def product_create(request):
     if request.method == 'POST':
-        Record.objects.create(
-            name=request.POST.get('name', ''),
-            description=request.POST.get('description', ''),
-            status=request.POST.get('status', 'active'),
-            email=request.POST.get('email', ''),
-            phone=request.POST.get('phone', ''),
-            amount=request.POST.get('amount', 0) or 0,
-            notes=request.POST.get('notes', ''),
-        )
-        return redirect('/records/')
-    return render(request, 'record_form.html', {'editing': False})
+        obj = Product()
+        obj.name = request.POST.get('name', '')
+        obj.sku = request.POST.get('sku', '')
+        obj.category = request.POST.get('category', '')
+        obj.quantity = request.POST.get('quantity') or 0
+        obj.reorder_level = request.POST.get('reorder_level') or 0
+        obj.unit_price = request.POST.get('unit_price') or 0
+        obj.cost_price = request.POST.get('cost_price') or 0
+        obj.status = request.POST.get('status', '')
+        obj.save()
+        return redirect('/products/')
+    return render(request, 'product_form.html', {'editing': False})
 
 
 @login_required
-def record_edit(request, pk):
-    record = get_object_or_404(Record, pk=pk)
+def product_edit(request, pk):
+    obj = get_object_or_404(Product, pk=pk)
     if request.method == 'POST':
-        record.name = request.POST.get('name', record.name)
-        record.description = request.POST.get('description', record.description)
-        record.status = request.POST.get('status', record.status)
-        record.email = request.POST.get('email', record.email)
-        record.phone = request.POST.get('phone', record.phone)
-        record.amount = request.POST.get('amount', record.amount) or 0
-        record.notes = request.POST.get('notes', record.notes)
-        record.save()
-        return redirect('/records/')
-    return render(request, 'record_form.html', {'record': record, 'editing': True})
+        obj.name = request.POST.get('name', '')
+        obj.sku = request.POST.get('sku', '')
+        obj.category = request.POST.get('category', '')
+        obj.quantity = request.POST.get('quantity') or 0
+        obj.reorder_level = request.POST.get('reorder_level') or 0
+        obj.unit_price = request.POST.get('unit_price') or 0
+        obj.cost_price = request.POST.get('cost_price') or 0
+        obj.status = request.POST.get('status', '')
+        obj.save()
+        return redirect('/products/')
+    return render(request, 'product_form.html', {'record': obj, 'editing': True})
 
 
 @login_required
-def record_delete(request, pk):
-    record = get_object_or_404(Record, pk=pk)
+def product_delete(request, pk):
+    obj = get_object_or_404(Product, pk=pk)
     if request.method == 'POST':
-        record.delete()
-    return redirect('/records/')
+        obj.delete()
+    return redirect('/products/')
+
+
+@login_required
+def warehouse_list(request):
+    qs = Warehouse.objects.all()
+    search = request.GET.get('search', '')
+    if search:
+        qs = qs.filter(name__icontains=search)
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+    return render(request, 'warehouse_list.html', {'records': qs, 'search': search, 'status_filter': status_filter})
+
+
+@login_required
+def warehouse_create(request):
+    if request.method == 'POST':
+        obj = Warehouse()
+        obj.name = request.POST.get('name', '')
+        obj.location = request.POST.get('location', '')
+        obj.capacity = request.POST.get('capacity') or 0
+        obj.utilization = request.POST.get('utilization') or 0
+        obj.manager = request.POST.get('manager', '')
+        obj.status = request.POST.get('status', '')
+        obj.contact = request.POST.get('contact', '')
+        obj.save()
+        return redirect('/warehouses/')
+    return render(request, 'warehouse_form.html', {'editing': False})
+
+
+@login_required
+def warehouse_edit(request, pk):
+    obj = get_object_or_404(Warehouse, pk=pk)
+    if request.method == 'POST':
+        obj.name = request.POST.get('name', '')
+        obj.location = request.POST.get('location', '')
+        obj.capacity = request.POST.get('capacity') or 0
+        obj.utilization = request.POST.get('utilization') or 0
+        obj.manager = request.POST.get('manager', '')
+        obj.status = request.POST.get('status', '')
+        obj.contact = request.POST.get('contact', '')
+        obj.save()
+        return redirect('/warehouses/')
+    return render(request, 'warehouse_form.html', {'record': obj, 'editing': True})
+
+
+@login_required
+def warehouse_delete(request, pk):
+    obj = get_object_or_404(Warehouse, pk=pk)
+    if request.method == 'POST':
+        obj.delete()
+    return redirect('/warehouses/')
+
+
+@login_required
+def stockmovement_list(request):
+    qs = StockMovement.objects.all()
+    search = request.GET.get('search', '')
+    if search:
+        qs = qs.filter(product_name__icontains=search)
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        qs = qs.filter(movement_type=status_filter)
+    return render(request, 'stockmovement_list.html', {'records': qs, 'search': search, 'status_filter': status_filter})
+
+
+@login_required
+def stockmovement_create(request):
+    if request.method == 'POST':
+        obj = StockMovement()
+        obj.product_name = request.POST.get('product_name', '')
+        obj.warehouse = request.POST.get('warehouse', '')
+        obj.movement_type = request.POST.get('movement_type', '')
+        obj.quantity = request.POST.get('quantity') or 0
+        obj.reference = request.POST.get('reference', '')
+        obj.date = request.POST.get('date') or None
+        obj.notes = request.POST.get('notes', '')
+        obj.save()
+        return redirect('/stockmovements/')
+    return render(request, 'stockmovement_form.html', {'editing': False})
+
+
+@login_required
+def stockmovement_edit(request, pk):
+    obj = get_object_or_404(StockMovement, pk=pk)
+    if request.method == 'POST':
+        obj.product_name = request.POST.get('product_name', '')
+        obj.warehouse = request.POST.get('warehouse', '')
+        obj.movement_type = request.POST.get('movement_type', '')
+        obj.quantity = request.POST.get('quantity') or 0
+        obj.reference = request.POST.get('reference', '')
+        obj.date = request.POST.get('date') or None
+        obj.notes = request.POST.get('notes', '')
+        obj.save()
+        return redirect('/stockmovements/')
+    return render(request, 'stockmovement_form.html', {'record': obj, 'editing': True})
+
+
+@login_required
+def stockmovement_delete(request, pk):
+    obj = get_object_or_404(StockMovement, pk=pk)
+    if request.method == 'POST':
+        obj.delete()
+    return redirect('/stockmovements/')
 
 
 @login_required
@@ -98,12 +211,10 @@ def settings_view(request):
     return render(request, 'settings.html')
 
 
-# API endpoints
 @login_required
 def api_stats(request):
-    return JsonResponse({
-        'total': Record.objects.count(),
-        'active': Record.objects.filter(status='active').count(),
-        'pending': Record.objects.filter(status='pending').count(),
-        'inactive': Record.objects.filter(status='inactive').count(),
-    })
+    data = {}
+    data['product_count'] = Product.objects.count()
+    data['warehouse_count'] = Warehouse.objects.count()
+    data['stockmovement_count'] = StockMovement.objects.count()
+    return JsonResponse(data)
