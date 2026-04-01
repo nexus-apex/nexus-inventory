@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{% if editing %}Edit{% else %}New{% endif %} Product | NexusInventory{% endblock %}
+{% block page_title %}{% if editing %}Edit Product{% else %}New Product{% endif %}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:750px">
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-row">
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" name="name" value="{{ record.name|default:'' }}">
+      </div>
+      <div class="form-group">
+        <label>Sku</label>
+        <input type="text" name="sku" value="{{ record.sku|default:'' }}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Category</label>
+        <input type="text" name="category" value="{{ record.category|default:'' }}">
+      </div>
+      <div class="form-group">
+        <label>Quantity</label>
+        <input type="number" name="quantity" value="{{ record.quantity|default:'0' }}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Reorder Level</label>
+        <input type="number" name="reorder_level" value="{{ record.reorder_level|default:'0' }}">
+      </div>
+      <div class="form-group">
+        <label>Unit Price</label>
+        <input type="number" step="0.01" name="unit_price" value="{{ record.unit_price|default:'0' }}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Cost Price</label>
+        <input type="number" step="0.01" name="cost_price" value="{{ record.cost_price|default:'0' }}">
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select name="status">
+          <option value="in_stock" {% if record.status == 'in_stock' %}selected{% endif %}>In Stock</option>
+          <option value="low_stock" {% if record.status == 'low_stock' %}selected{% endif %}>Low Stock</option>
+          <option value="out_of_stock" {% if record.status == 'out_of_stock' %}selected{% endif %}>Out of Stock</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:0.75rem;margin-top:1rem">
+      <button type="submit" class="btn btn-primary">{% if editing %}Update{% else %}Create{% endif %} Product</button>
+      <a href="/products/" class="btn" style="background:var(--border);color:var(--text)">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
