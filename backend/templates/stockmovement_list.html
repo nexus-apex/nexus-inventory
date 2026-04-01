@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Stockmovements | NexusInventory{% endblock %}
+{% block page_title %}Stockmovements{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
+  <form class="search-bar" method="get" style="flex:1;margin-bottom:0">
+    <input type="text" name="search" value="{{ search }}" placeholder="Search stockmovements...">
+    <select name="status" onchange="this.form.submit()">
+      <option value="">All Movement Type</option>
+      <option value="in" {% if status_filter == 'in' %}selected{% endif %}>In</option>
+      <option value="out" {% if status_filter == 'out' %}selected{% endif %}>Out</option>
+      <option value="transfer" {% if status_filter == 'transfer' %}selected{% endif %}>Transfer</option>
+      <option value="adjustment" {% if status_filter == 'adjustment' %}selected{% endif %}>Adjustment</option>
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+  </form>
+  <a href="/stockmovements/create/" class="btn btn-primary">+ New StockMovement</a>
+</div>
+
+<div class="card">
+  {% if records %}
+  <table>
+    <thead>
+      <tr><th>Product Name</th><th>Warehouse</th><th>Movement Type</th><th>Quantity</th><th>Reference</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for r in records %}
+      <tr>
+        <td><a href="/stockmovements/{{ r.pk }}/edit/"><strong>{{ r.product_name }}</strong></a></td>
+        <td>{{ r.warehouse|default:"-" }}</td>
+        <td><span class="badge badge-blue">{{ r.get_movement_type_display }}</span></td>
+        <td>{{ r.quantity|default:"-" }}</td>
+        <td>{{ r.reference|default:"-" }}</td>
+        <td class="actions">
+          <a href="/stockmovements/{{ r.pk }}/edit/" class="btn btn-primary btn-sm">Edit</a>
+          <form method="post" action="/stockmovements/{{ r.pk }}/delete/" style="display:inline" onsubmit="return confirm('Delete?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm">Del</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    <p>No stockmovements found.</p>
+    <a href="/stockmovements/create/" class="btn btn-primary" style="margin-top:1rem">Create StockMovement</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
